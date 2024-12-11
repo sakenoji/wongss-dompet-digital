@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dompet Digital</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to right, #e0f7fa, #e1bee7);
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+        .container {
+            width: 90%;
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 15px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            font-size: 24px;
+        }
+        .form-group {
+            margin-bottom: 10px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 3px;
+            font-weight: bold;
+            color: #007bff;
+            font-size: 14px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        .form-group input:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+        .buttons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        .buttons button {
+            margin: 5px;
+            padding: 8px 12px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            flex: 1 1 45%;
+            font-size: 14px;
+        }
+        .buttons button:hover {
+            background-color: #0056b3;
+        }
+        .output, .user-list, .deleted-list {
+            margin-top: 15px;
+            padding: 8px;
+            border: 1px solid #c8e6c9;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .output {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+        .user-list, .deleted-list {
+            background: #f1f8e9;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .transaction {
+            margin: 3px 0;
+            padding: 3px;
+            border-bottom: 1px solid #ccc;
+        }
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+        }
+        .slide {
+            display: none;
+            margin-top: 15px;
+            padding: 8px;
+            border: 1px solid #c8e6c9;
+            border-radius: 4px;
+            background: #f1f8e9;
+        }
+        .admin-buttons {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .admin-buttons button {
+            width: 80%;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                margin: 20px;
+                padding: 15px;
+            }
+            .buttons button {
+                flex: 1 1 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Dompet Digital</h1>
+
+        <div class="form-group">
+            <label for="username">Nama Pengguna:</label>
+            <input type="text" id="username" placeholder="Masukkan nama Anda">
+        </div>
+
+        <div class="form-group">
+            <label for="recipient">Penerima:</label>
+            <input type="text" id="recipient" placeholder="Nama penerima (mis. Budi)">
+        </div>
+
+        <div class="form-group">
+            <label for="amount">Jumlah:</label>
+            <input type="number" id="amount" placeholder="Jumlah uang (mis. 50000)" min="0">
+        </div>
+
+        <div class="form-group">
+            <label for="note">Catatan:</label>
+            <input type="text" id="note" placeholder="Catatan (opsional)">
+        </div>
+
+        <div class="buttons">
+            <button onclick="checkBalance()">Cek Saldo</button>
+            <button onclick="deposit()">Setor</button>
+            <button onclick="withdraw()">Tarik</button>
+            <button onclick="transfer()">Transfer</button>
+            <button onclick="registerUser()">Daftar Pengguna</button>
+            <button onclick="toggleAdminFunctions()">Fitur Admin</button>
+        </div>
+
+        <div id="output" class="output"></div>
+        
+        <h2>Riwayat Transaksi</h2>
+        <div id="history" class="user-list"></div>
+
+        <h2>Pengguna Terdaftar</h2>
+        <div id="registeredUsers" class="user-list"></div>
+
+        <h2>Pengguna Terhapus</h2>
+        <div id="deletedUsers" class="deleted-list"></div>
+
+        <div id="adminFunctions" class="slide">
+            <h2>Fungsi Admin</h2>
+            <div class="admin-buttons">
+                <button onclick="deleteUser()">Hapus Pengguna</button>
+                <button onclick="restoreUser()">Pulihkan Pengguna</button>
+                <button onclick="resetBalance()">Reset Saldo</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const users = {};
+        const deletedUsers = {};
+
+        function checkBalance() {
+            const username = document.getElementById('username').value.trim();
+            if (username && users[username]) {
+                showOutput(`Saldo Anda adalah: Rp${users[username].balance.toLocaleString()}`);
+                scrollToElement('output'); // Gulir ke bagian output
+            } else {
+                showOutput('Pengguna tidak ditemukan. Silakan daftarkan pengguna baru.');
+            }
+        }
+
+        function deposit() {
+            const username = document.getElementById('username').value.trim();
+            const amount = parseInt(document.getElementById('amount').value);
+            const note = document.getElementById('note').value;
+
+            if (username && users[username]) {
+                if (amount > 0) {
+                    users[username].balance += amount;
+                    users[username].transactions.push(`Setor: Rp${amount.toLocaleString()} ${note}`);
+                    showOutput(`Setoran berhasil! Saldo baru: Rp${users[username].balance.toLocaleString()}`);
+                    updateRegisteredUsers();
+                    scrollToElement('registeredUsers'); // Gulir ke daftar pengguna
+                } else {
+                    showOutput('Jumlah setoran harus lebih besar dari nol.');
+                }
+            } else {
+                showOutput('Pengguna tidak ditemukan. Silakan daftarkan pengguna baru.');
+            }
+        }
+
+        function withdraw() {
+            const username = document.getElementById('username').value.trim();
+            const amount = parseInt(document.getElementById('amount').value);
+            const note = document.getElementById('note').value;
+
+            if (username && users[username]) {
+                if (amount > 0 && amount <= users[username].balance) {
+                    users[username].balance -= amount;
+                    users[username].transactions.push(`Tarik: Rp${amount.toLocaleString()} ${note}`);
+                    showOutput(`Penarikan berhasil! Saldo baru: Rp${users[username].balance.toLocaleString()}`);
+                    updateRegisteredUsers();
+                    scrollToElement('registeredUsers'); // Gulir ke daftar pengguna
+                } else {
+                    showOutput('Saldo tidak cukup atau jumlah tidak valid.');
+                }
+            } else {
+                showOutput('Pengguna tidak ditemukan. Silakan daftarkan pengguna baru.');
+            }
+        }
+
+        function transfer() {
+            const sender = document.getElementById('username').value.trim();
+            const recipient = document.getElementById('recipient').value.trim();
+            const amount = parseInt(document.getElementById('amount').value);
+            const note = document.getElementById('note').value;
+
+            if (sender && users[sender]) {
+                if (recipient && users[recipient]) {
+                    if (amount > 0 && amount <= users[sender].balance) {
+                        users[sender].balance -= amount;
+                        users[recipient].balance += amount;
+                        users[sender].transactions.push(`Transfer ke ${recipient}: Rp${amount.toLocaleString()} ${note}`);
+                        users[recipient].transactions.push(`Transfer dari ${sender}: Rp${amount.toLocaleString()} ${note}`);
+                        showOutput(`Transfer berhasil! Anda mengirim Rp${amount.toLocaleString()} ke ${recipient}.`);
+                        updateRegisteredUsers();
+                        scrollToElement('registeredUsers'); // Gulir ke daftar pengguna
+                    } else {
+                        showOutput('Saldo tidak cukup atau jumlah tidak valid.');
+                    }
+                } else {
+                    showOutput('Pengguna penerima tidak ditemukan.');
+                }
+            } else {
+                showOutput('Pengguna pengirim tidak ditemukan. Silakan daftarkan pengguna baru.');
+            }
+        }
+
+        function registerUser() {
+            const username = document.getElementById('username').value.trim();
+            if (username && !users[username]) {
+                users[username] = { balance: 0, transactions: [] };
+                showOutput(`Pengguna ${username} berhasil didaftarkan.`);
+                updateRegisteredUsers();
+                scrollToElement('registeredUsers'); // Gulir ke daftar pengguna
+            } else if (users[username]) {
+                showOutput('Pengguna sudah terdaftar.');
+            } else {
+                showOutput('Nama pengguna tidak valid.');
+            }
+        }
+
+        function deleteUser() {
+            const username = document.getElementById('username').value.trim();
+            if (username && users[username]) {
+                deletedUsers[username] = users[username];
+                delete users[username];
+                showOutput(`Pengguna ${username} berhasil dihapus.`);
+                updateRegisteredUsers();
+                updateDeletedUsers();
+                scrollToElement('deletedUsers'); // Gulir ke daftar pengguna terhapus
+            } else {
+                showOutput('Pengguna tidak ditemukan.');
+            }
+        }
+
+        function restoreUser() {
+            const username = document.getElementById('username').value.trim();
+            if (username && deletedUsers[username]) {
+                users[username] = { balance: 0, transactions: [] }; // Reset saldo dan riwayat transaksi
+                delete deletedUsers[username];
+                showOutput(`Pengguna ${username} berhasil dipulihkan. Riwayat transaksi telah direset.`);
+                updateRegisteredUsers();
+                updateDeletedUsers();
+                scrollToElement('registeredUsers'); // Gulir ke daftar pengguna
+            } else {
+                showOutput('Pengguna tidak ditemukan di daftar terhapus.');
+            }
+        }
+
+        function resetBalance() {
+            const username = document.getElementById('username').value.trim();
+            if (username && users[username]) {
+                users[username].balance = 0;
+                showOutput(`Saldo ${username} telah direset menjadi Rp0.`);
+                updateRegisteredUsers();
+                scrollToElement('registeredUsers'); // Gulir ke daftar pengguna
+            } else {
+                showOutput('Pengguna tidak ditemukan.');
+            }
+        }
+
+        function showOutput(message) {
+            const output = document.getElementById('output');
+            output.textContent = message;
+            updateTransactionHistory();
+        }
+
+        function updateTransactionHistory() {
+            const history = document.getElementById('history');
+            history.innerHTML = ''; // Bersihkan riwayat sebelumnya
+            const username = document.getElementById('username').value.trim();
+
+            if (username && users[username]) {
+                users[username].transactions.forEach(transaction => {
+                    const div = document.createElement('div');
+                    div.className = 'transaction';
+                    div.textContent = transaction;
+                    history.appendChild(div);
+                });
+            }
+        }
+
+        function updateRegisteredUsers() {
+            const registeredUsersDiv = document.getElementById('registeredUsers');
+            registeredUsersDiv.innerHTML = ''; // Bersihkan daftar sebelumnya
+            for (const user in users) {
+                const div = document.createElement('div');
+                div.className = 'user-item';
+                div.textContent = `${user} - Saldo: Rp${users[user].balance.toLocaleString()}`;
+                registeredUsersDiv.appendChild(div);
+            }
+        }
+
+        function updateDeletedUsers() {
+            const deletedUsersDiv = document.getElementById('deletedUsers');
+            deletedUsersDiv.innerHTML = ''; // Bersihkan daftar sebelumnya
+            for (const user in deletedUsers) {
+                const div = document.createElement('div');
+                div.className = 'user-item';
+                div.textContent = `${user} - Saldo: Rp${deletedUsers[user].balance.toLocaleString()}`;
+                deletedUsersDiv.appendChild(div);
+            }
+        }
+
+        function toggleAdminFunctions() {
+            const adminFunctions = document.getElementById('adminFunctions');
+            adminFunctions.style.display = adminFunctions.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function scrollToElement(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+    </script>
+</body>
+</html>
